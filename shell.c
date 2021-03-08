@@ -22,7 +22,7 @@ void func_AUTHOR(char* str_in, char* str_out){
 void func_IP(char* str_in, char* str_out){
     char myip[IP_ADDR_MAX_LEN];
     get_my_public_ip(myip);
-    strncpy(myself_info, myip, IP_ADDR_MAX_LEN);
+    strncpy(&myself_info, myip, IP_ADDR_MAX_LEN);
     vlog("IP:%s\n", myip);
 }
 void func_PORT(char* str_in, char* str_out){
@@ -34,18 +34,25 @@ void func_LIST(char* str_in, char* str_out){
     char* str_out_copy = str_out+8;
     for(int i = 0; i < MAX_CLIENTS_LIMIT; i++){
         if (clients[i].in_use == IN_USE){
-            memcpy(str_out_copy+(sizeof(VClient)*online_cout), clients[i], sizeof(VClient));
+            memcpy(str_out_copy+(sizeof(VClient)*online_cout), &clients[i], sizeof(VClient));
             online_cout++;
         }
     }
     *(char*)str_out_head = (char)online_cout;
+    logd("count = %d\n", online_cout);
+    
+
+    for(int i = 0; i<*(char*)str_out_head; i++){
+        VClient* vclient = (VClient*)str_out_head+8;
+        dump_client_info(vclient);
+    }
 }
 void run_command(unsigned char *str){
     Command cmds[] = {
         {"AUTHOR",  COMMON, func_AUTHOR, "ID func is test ID"},
         {"IP",      COMMON, func_IP,    "LIST description is list users,...."},
         {"PORT",    COMMON, func_PORT,    "HELP print all help messages description is whicnn,...."},
-        {"LIST",    COMMON, func111,    "HELP print all help messages description is whicnn,...."},
+        {"LIST",    COMMON, func_LIST,    "HELP print all help messages description is whicnn,...."},
 
         {"STATISTICS",  SERVER, func111,    ""},
         {"BLOCKED",     SERVER, func111,    ""},
@@ -65,7 +72,9 @@ void run_command(unsigned char *str){
     {
         if (strstr(str, cmds[i].cmd) == str){
             if( cmds[i].type == CUR_MODE || cmds[i].type == COMMON){
-                cmds[i].func( str + strlen(cmds[i].cmd) );
+                char* buff_out = malloc(sizeof(VClient)*MAX_CLIENTS_LIMIT);
+                cmds[i].func( str + strlen(cmds[i].cmd) + 1, buff_out);
+                free(buff_out);
                 break;
             }else{
                 loge("You are in xxx mode, but run yyy's command");
@@ -77,7 +86,7 @@ void run_command(unsigned char *str){
 }
 
 
-int main(int argc, char const *argv[]){
+int test_shell_main(int argc, char const *argv[]){
     char buff[300];
     scanf("%s", buff);
     run_command(buff);

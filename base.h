@@ -4,6 +4,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#include <stdlib.h> 
+#include <string.h>
+
+#include <sys/types.h> 
+
 #define DEBUG 1
 #define loge printf
 #define vlog printf
@@ -25,7 +31,7 @@ typedef struct Command
 {
     unsigned char *cmd;
     enum CommandType type;
-    void (*func)(char *);
+    void (*func)(char *, char *);
     unsigned char *description;
 } Command;
 
@@ -47,6 +53,7 @@ struct server_data{
 #define STATUS_MAX_LEN      16
 #define HOSTNAME_MAX_LEN    256
 #define MAX_CLIENTS_LIMIT   128
+#define MAX_LOGIN_LIMIT     128
 typedef struct VClient
 {
     uint32_t fd;
@@ -99,3 +106,14 @@ void get_my_public_ip(char* str){
 	logd("recv[%d]:[%s]",len, str); //打印服务器端信息
     return;
 }
+
+
+int is_valid_ip_addr(char *ipAddress)
+{
+    struct sockaddr_in sa;
+    int result = inet_pton(AF_INET, ipAddress, &(sa.sin_addr));
+    logd("is valid ip addr = %d\n", result);
+    return result;//!= 0;? 1:0;
+}
+
+
