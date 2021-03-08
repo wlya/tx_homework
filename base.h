@@ -67,7 +67,8 @@ typedef struct VClient
 }VClient;
 
 VClient myself_info;
-VClient clients[MAX_CLIENTS_LIMIT];
+VClient server_clients[MAX_CLIENTS_LIMIT];
+VClient client_clients[MAX_CLIENTS_LIMIT];
 
 void dump_client_info(VClient* client){
     logd("hostname is %s\n", client->hostname);

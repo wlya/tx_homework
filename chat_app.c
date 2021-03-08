@@ -25,11 +25,15 @@ void init_client_info(){
 }
 
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 int as_client_fd;
 char as_client_server_addr[IP_ADDR_MAX_LEN];
 int as_client_server_port;
 
-void func_LOGIN(char *str_in, char *str_out){
+void func_client_LOGIN(char *str_in, char *str_out){
     logd("login str_in is: [%s]\n", str_in);
     int as_client_fd; 
     char* message = "Hello Server"; 
@@ -64,6 +68,7 @@ void func_LOGIN(char *str_in, char *str_out){
     memset(str_out, 0, sizeof(str_out)); 
     strcpy(str_out, "Hello Server"); 
     write(as_client_fd, &myself_info, sizeof(myself_info));
+    
     printf("Message from server: "); 
     read(as_client_fd, str_out, sizeof(str_out)); 
     puts(str_out); 
@@ -77,10 +82,6 @@ int client_main(int argc, char *argv[])
     return 0;
 }
 
-
-
-
-/////////////////////////////////
 
 
 
@@ -98,30 +99,20 @@ void str_to_upper(unsigned char *s)
         s++;
     }
 }
-void func_AUTHOR(char* str_in, char* str_out){
+void func_client_AUTHOR(char* str_in, char* str_out){
     vlog("I, %s, have read and understood the course academic integrity policy.\n", "tanxi");
 }
-void func_IP(char* str_in, char* str_out){
+void func_client_IP(char* str_in, char* str_out){
     char myip[IP_ADDR_MAX_LEN];
     get_my_public_ip(myip);
     strncpy(&myself_info, myip, IP_ADDR_MAX_LEN);
     vlog("IP:%s\n", myip);
 }
-void func_PORT(char* str_in, char* str_out){
+void func_client_PORT(char* str_in, char* str_out){
     vlog("PORT:%d\n", LISTEN_PORT);
 }
-void func_LIST(char* str_in, char* str_out){
-    int online_cout = 0;
-    char* str_out_head = str_out;
-    char* str_out_copy = str_out+8;
-    for(int i = 0; i < MAX_CLIENTS_LIMIT; i++){
-        if (clients[i].in_use == IN_USE){
-            memcpy(str_out_copy+(sizeof(VClient)*online_cout), &clients[i], sizeof(VClient));
-            online_cout++;
-        }
-    }
-    *(char*)str_out_head = (char)online_cout;
-    logd("count = %d\n", online_cout);
+void func_client_LIST(char* str_in, char* str_out){
+    
     
 
     for(int i = 0; i<*(char*)str_out_head; i++){
@@ -131,15 +122,15 @@ void func_LIST(char* str_in, char* str_out){
 }
 void run_command(unsigned char *str){
     Command cmds[] = {
-        {"AUTHOR",  COMMON, func_AUTHOR, "ID func is test ID"},
-        {"IP",      COMMON, func_IP,    "LIST description is list users,...."},
-        {"PORT",    COMMON, func_PORT,    "HELP print all help messages description is whicnn,...."},
-        {"LIST",    COMMON, func_LIST,    "HELP print all help messages description is whicnn,...."},
+        {"AUTHOR",  COMMON, func_client_AUTHOR, "ID func is test ID"},
+        {"IP",      COMMON, func_client_IP,    "LIST description is list users,...."},
+        {"PORT",    COMMON, func_client_PORT,    "HELP print all help messages description is whicnn,...."},
+        {"LIST",    COMMON, func_client_LIST,    "HELP print all help messages description is whicnn,...."},
 
         {"STATISTICS",  SERVER, func111,    ""},
         {"BLOCKED",     SERVER, func111,    ""},
 
-        {"LOGIN",       CLIENT, func_LOGIN, "LOGIN 127.0.0.1 1234"},
+        {"LOGIN",       CLIENT, func_client_LOGIN, "LOGIN 127.0.0.1 1234"},
         {"REFRESH",     CLIENT, func111, ""},
         {"SEND",        CLIENT, func111, ""},
         {"BROADCAST",   CLIENT, func111, ""},
@@ -177,17 +168,30 @@ int test_shell_main(int argc, char const *argv[]){
 
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
-///////////////////////////////////
-
-void func_server_when_login(char* str_in, char* str_out){
+void func_server_login(char* str_in, char* str_out){
     
 }
+
+void func_server_list(int fd, char* str_in){
+    int online_cout = 0;
+    char* str_out_head = str_out;
+    char* str_out_copy = str_out+8;
+    for(int i = 0; i < MAX_CLIENTS_LIMIT; i++){
+        if (server_clients[i].in_use == IN_USE){
+            memcpy(str_out_copy+(sizeof(VClient)*online_cout), &server_clients[i], sizeof(VClient));
+            online_cout++;
+        }
+    }
+    *(char*)str_out_head = (char)online_cout;
+    logd("count = %d\n", online_cout);
+}
+
 int server_main(int argc, char *argv[])
 {
-    memset(clients, 0, sizeof(clients));
+    memset(server_clients, 0, sizeof(server_clients));
     /* master file descriptor list */
     fd_set master;
     /* temp file descriptor list for select() */
@@ -294,12 +298,12 @@ int server_main(int argc, char *argv[])
                         logd("Server-accept() is OK...\n");
 
                         //vhit: init clinet info
-                        clients[newfd].in_use = IN_USE;
-                        clients[newfd].fd = newfd;
-                        strncpy(clients[newfd].ip_addr, inet_ntoa(clientaddr.sin_addr), IP_ADDR_MAX_LEN);
-                        strncpy(clients[newfd].hostname, inet_ntoa(clientaddr.sin_addr), IP_ADDR_MAX_LEN);
-                        clients[newfd].num_msg_sent = 0;
-                        clients[newfd].num_msg_rcv =  0;
+                        server_clients[newfd].in_use = IN_USE;
+                        server_clients[newfd].fd = newfd;
+                        strncpy(server_clients[newfd].ip_addr, inet_ntoa(clientaddr.sin_addr), IP_ADDR_MAX_LEN);
+                        strncpy(server_clients[newfd].hostname, inet_ntoa(clientaddr.sin_addr), IP_ADDR_MAX_LEN);
+                        server_clients[newfd].num_msg_sent = 0;
+                        server_clients[newfd].num_msg_rcv =  0;
                         
                         FD_SET(newfd, &master); /* add to master set */
                         
@@ -317,7 +321,7 @@ int server_main(int argc, char *argv[])
                     if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0)
                     {
                         //vhit: erase logouted client msg
-                        memset(&clients[i], 0 , sizeof(clients[i]));
+                        memset(&server_clients[i], 0 , sizeof(server_clients[i]));
                         /* got error or connection closed by client */
                         if (nbytes == 0)
                         {
@@ -375,7 +379,8 @@ int server_main(int argc, char *argv[])
 }
 
 
-////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 
 int main(int argc, char const *argv[])
