@@ -29,7 +29,16 @@ void func_PORT(char* str_in, char* str_out){
     vlog("PORT:%d\n", LISTEN_PORT);
 }
 void func_LIST(char* str_in, char* str_out){
-    
+    int online_cout = 0;
+    char* str_out_head = str_out;
+    char* str_out_copy = str_out+8;
+    for(int i = 0; i < MAX_CLIENTS_LIMIT; i++){
+        if (clients[i].in_use == IN_USE){
+            memcpy(str_out_copy+(sizeof(VClient)*online_cout), clients[i], sizeof(VClient));
+            online_cout++;
+        }
+    }
+    *(char*)str_out_head = (char)online_cout;
 }
 void run_command(unsigned char *str){
     Command cmds[] = {

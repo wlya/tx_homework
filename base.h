@@ -46,6 +46,7 @@ struct server_data{
 #define IP_ADDR_MAX_LEN     16
 #define STATUS_MAX_LEN      16
 #define HOSTNAME_MAX_LEN    256
+#define MAX_CLIENTS_LIMIT   128
 typedef struct VClient
 {
     uint32_t fd;
@@ -59,7 +60,7 @@ typedef struct VClient
 }VClient;
 
 VClient myself_info;
-VClient clients[100];
+VClient clients[MAX_CLIENTS_LIMIT];
 
 void dump_client_info(VClient* client){
     logd("hostname is %s\n", client->hostname);
