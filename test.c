@@ -9,6 +9,7 @@ typedef struct test
     int cc;
 }test;
 
+#define sp(fff, ...)  printf( "%d:%s:" fff ,__LINE__,__FUNCTION__,__VA_ARGS__)
 int main(int argc, char const *argv[])
 {
     int ret = 234;
@@ -34,5 +35,7 @@ int main(int argc, char const *argv[])
 
     test aa = {998877};
     printf("%d\n", aa.aa);
+
+    sp("[%s]", "helloworld");
     return 0;
 }

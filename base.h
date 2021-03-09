@@ -10,6 +10,8 @@
 
 #include <sys/types.h>
 
+#define sppp(fff, ...)  printf( "%d:%s:" fff ,__LINE__,__FUNCTION__,__VA_ARGS__)
+
 #define DEBUG 1
 #define loge printf
 #define vlog printf
@@ -69,7 +71,7 @@ typedef struct MSG_TRANSFER
     uint32_t cmd;
     char src_ip[IP_ADDR_MAX_LEN];
     char dst_ip[IP_ADDR_MAX_LEN];
-    uint8_t  msg[MAX_CMD_TRANSFER_SIZE];
+    char msg[MAX_CMD_TRANSFER_SIZE];
 }MSG_TRANSFER;
 
 
@@ -81,15 +83,16 @@ typedef struct Command
     void (*client_func)(char *, char *);
     void (*server_func)(int, char *, size_t);
     unsigned char *v;
+    void (*client_recv_func)(int, MSG_TRANSFER*);
 } Command;
 
-typedef struct ClientOnRecvCmd
-{
-    unsigned char *cmd;
-    uint32_t cmd_id;
-    void (*handler)(int, MSG_TRANSFER*);
-    unsigned char *description;
-}ClientOnRecvCmd;
+// typedef struct ClientOnRecvCmd
+// {
+//     unsigned char *cmd;
+//     uint32_t cmd_id;
+//     void (*handler)(int, MSG_TRANSFER*);
+//     unsigned char *description;
+// }ClientOnRecvCmd;
 
 #define MODE_NONE 0x001
 #define MODE_SERVER 0x002
@@ -120,7 +123,13 @@ size_t client_clients_count = 0;
 size_t server_clients_count = 0;
 VClient server_clients[MAX_CLIENTS_LIMIT];
 VClient client_clients[MAX_CLIENTS_LIMIT];
-
+void dump_msg_transfer(MSG_TRANSFER* msg){
+    logd("+++++++++++++++++++++++++++++\n");
+    logd("src_ip: %s\n", msg->src_ip);
+    logd("dst_ip: %s\n", msg->dst_ip);
+    logd("cmd: %d\n", msg->cmd);
+    logd("msg: %s\n", msg->msg);
+}
 void dump_client_info(VClient *client)
 {
     logd("+++++++++++++++++++++++++++++\n");
@@ -270,3 +279,5 @@ int vrecv(int fd, char *buffer, size_t size, int flags)
     hexDump(" recv <<<  ", buffer, ret);
     return ret;
 }
+
+void func_client_refresh_handle_back(char *str_out);
