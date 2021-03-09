@@ -1,6 +1,14 @@
 #include <stdio.h>
 #include "string.h"
 
+
+typedef struct test
+{
+    int aa;
+    char bb[12];
+    int cc;
+}test;
+
 int main(int argc, char const *argv[])
 {
     int ret = 234;
@@ -16,5 +24,15 @@ int main(int argc, char const *argv[])
     ret = 234;
     ret = strstr("1234 56787", "4444");
     printf("ret= %d\n", ret);
+    char b0[] = "1.2.44.56 fasdfnasdfasdf";
+    char* b1 = strchr(b0, ' ');
+    char b2[16];
+    memset(b2, 0 , 16);
+    strncpy(b2, b0, b1-b0);
+    // b2[b1-b0]='\0';
+    printf("%s\n", b2);
+
+    test aa = {998877};
+    printf("%d\n", aa.aa);
     return 0;
 }
