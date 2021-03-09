@@ -87,9 +87,9 @@ int send_msg_to_ip(char *ip, int port, MSG_TRANSFER *msg, char *msg_out, size_t 
     //     }
     //     remote_addr.sin_port = tclient->port;  //服务器端口号
     // }
-    
+
     logd("send msg to [%s:%d]\n", ip, remote_addr.sin_port);
-    
+
     /*创建客户端套接字--IPv4协议，面向连接通信，TCP协议*/
     if ((client_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         vlog_error("Socket error");
@@ -97,7 +97,7 @@ int send_msg_to_ip(char *ip, int port, MSG_TRANSFER *msg, char *msg_out, size_t 
     }
     /*将套接字绑定到服务器的网络地址上*/
     if (connect(client_sockfd, (struct sockaddr *)&remote_addr, sizeof(struct sockaddr)) < 0) {
-        logd("inet_addr(ip):[%08x][%d],",inet_addr(ip) , remote_addr.sin_port);
+        logd("inet_addr(ip):[%08x][%d],", inet_addr(ip), remote_addr.sin_port);
         perror("connect error");
         return 1;
     }
@@ -111,7 +111,7 @@ int send_msg_to_ip(char *ip, int port, MSG_TRANSFER *msg, char *msg_out, size_t 
 }
 
 void func_client_LOGIN(char *str_in, char *str_out) {
-    if(as_client_server_fd >0){
+    if (as_client_server_fd > 0) {
         vlog_error("already login\n");
         return;
     }
@@ -148,7 +148,7 @@ void func_client_LOGIN(char *str_in, char *str_out) {
         return INTERNAL_ERROR;
     }
     logd("connected!!!\n");
-    
+
     MSG_TRANSFER tMSG_TRANSFER;
     memset(&tMSG_TRANSFER, 0, sizeof(MSG_TRANSFER));
     tMSG_TRANSFER.cmd = LOGIN;
@@ -166,11 +166,11 @@ void func_client_LOGIN(char *str_in, char *str_out) {
     // close(as_client_server_fd);
 }
 void func_server_login(int fd, MSG_TRANSFER *str_in, size_t size) {
-    uint32_t count = *(uint32_t*)str_in;
-    VClient* tclient = (VClient *)str_in->msg;
+    uint32_t count = *(uint32_t *)str_in;
+    VClient *tclient = (VClient *)str_in->msg;
     // count = min(count, MAX_CLIENTS_LIMIT);
     // dump_client_info()
-    if(server_clients[fd].status != LOGGED_IN){
+    if (server_clients[fd].status != LOGGED_IN) {
         server_clients_count++;
         server_clients[fd].status = LOGGED_IN;
     }
@@ -194,13 +194,23 @@ void func_client_PORT(char *str_in, char *str_out) {
 }
 
 void func_client_LIST(char *str_in, char *str_out) {
-    logd("running client list, client_clients_count=%d\n",client_clients_count);
+    logd("running shell list, client_clients_count=%d\n", client_clients_count);
+    if (client_clients_count == 0) {
+        vlog_success("is empty.\n");
+    }
+    //list
     for (int i = 0; i < client_clients_count; i++) {
-        if (client_clients[i].status == LOGGED_IN)
-            dump_client_info(&client_clients[i]);
+        vlog_success("%-5d%-35s%-20s%-8d\n", i+1, client_clients[i].hostname, client_clients[i].ip_addr, client_clients[i].port);
+    }
+    //statics
+    for (int i = 0; i < client_clients_count; i++) {
+        vlog_success("%-5d%-35s%-8d%-8d%-8s\n", i+1, client_clients[i].hostname, client_clients[i].num_msg_sent, client_clients[i].num_msg_rcv, LOGIN_STATUS[client_clients[i].status]);
+        // dump_client_info(&client_clients[i]);
+        // if (client_clients[i].status == LOGGED_IN)
     }
 }
 void func_client_list_init() {
+
 }
 
 void func_server_list(int fd, MSG_TRANSFER *str_in, size_t size) {
@@ -227,7 +237,7 @@ void func_client_send(char *str_in, char *str_out) {
     char ip[IP_ADDR_MAX_LEN];
     memset(ip, 0, IP_ADDR_MAX_LEN);
     strncpy(ip, str_in, msg - str_in);
-    if ( is_valid_ip_addr(ip) && is_in_local_list_cache(ip)) {
+    if (is_valid_ip_addr(ip) && is_in_local_list_cache(ip)) {
         MSG_TRANSFER tmsg_transfer;
         memset(&tmsg_transfer, 0, sizeof(MSG_TRANSFER));
         tmsg_transfer.cmd = SEND;
@@ -243,19 +253,17 @@ void func_client_recv(MSG_TRANSFER *tmsg_transfer) {
 }
 void func_server_send(int fd, MSG_TRANSFER *tmsg_transfer, size_t size) {
     dump_msg_transfer(tmsg_transfer);
-    VClient* dst_client = get_vclient_by_ip(tmsg_transfer->dst_ip);
+    VClient *dst_client = get_vclient_by_ip(tmsg_transfer->dst_ip);
     logd("fd:%d\n", fd);
     dump_client_info(dst_client);
-    if(dst_client && dst_client->status == LOGGED_IN){
+    if (dst_client && dst_client->status != UN_SEE) {
         char *src_ip = dst_client->ip_addr;
         send_msg_to_ip(dst_client->ip_addr, dst_client->port, tmsg_transfer, NULL, NULL);
         vsend(fd, "send success!", 14, 0);
-    }else{
+    } else {
         logd("remote device is not online");
         vsend(fd, "Target not online\n", 38, 0);
     }
-    
-    
 }
 void func_client_broadcast(char *str_in, char *str_out) {
     // size_t msg_len = strnlen(msg, MAX_MSG_LEN);
@@ -286,32 +294,40 @@ void func_client_refresh(char *strin, char *strout) {
         func_client_refresh_handle_back(&msg_back);
     }
 }
+
+void func_shell_blocked(char *strin, char *strout) {
+    if( CUR_MODE == MODE_SERVER ){
+        
+    }
+}
 void func_server_refresh(int fd, MSG_TRANSFER *tmsg_transfer, size_t size) {
     logd("server: recv cmd >> refresh\n");
     size_t buf_size = sizeof(VClient) * server_clients_count + 8;
     char *msg = malloc(buf_size);
     memset(msg, 0, buf_size);
-    *(uint32_t *)msg = server_clients_count;
     char *msg_0 = msg + 8;
     logd("server_clients_count : %d\n", server_clients_count);
     hexDump("", msg, buf_size);
+    int tmp_count = 0;
     for (int i = 1; i < MAX_CLIENTS_LIMIT; i++) {
-        if(server_clients[i].status !=UN_SEE){
-            logd("fd = %d, [%d].fd = %d, status = %d\n", fd, i, server_clients[i].fd, server_clients[i].status );
+        if (server_clients[i].status != UN_SEE) {
+            logd("fd = %d, [%d].fd = %d, status = %d\n", fd, i, server_clients[i].fd, server_clients[i].status);
             dump_client_info(&server_clients[i]);
         }
         if (server_clients[i].fd != fd && server_clients[i].status != UN_SEE) {
+            tmp_count++;
             memcpy(msg_0, &server_clients[i], sizeof(VClient));
             hexDump("", msg, buf_size);
             msg_0 += sizeof(VClient);
         }
     }
-    
-    vsend(fd, msg, buf_size , 0);
+    server_clients_count = tmp_count + 1;
+    *(uint32_t *)msg = tmp_count;
+    vsend(fd, msg, buf_size, 0);
     free(msg);
 }
 
-void func_client_on_recv_send(int fd, MSG_TRANSFER* msg){
+void func_client_on_recv_send(int fd, MSG_TRANSFER *msg) {
     vlog_success("received message from %s\n", msg->src_ip);
     vlog_success("msg is : [%s]\n", msg->msg);
 }
@@ -323,7 +339,7 @@ Command cmds[] = {
     {"LIST", LIST, COMMON, func_client_LIST, func_server_list, "HELP print all help messages description is whicnn,...."},
 
     {"STATISTICS", STATISTICS, SERVER, func111, func111, ""},
-    {"BLOCKED", BLOCKED, SERVER, func111, func111, ""},
+    {"BLOCKED", BLOCKED, SERVER, func_shell_blocked, func111, ""},
 
     {"LOGIN", LOGIN, CLIENT, func_client_LOGIN, func_server_login, "LOG IN 127.0.0.1 1234"},
     {"REFRESH", REFRESH, CLIENT, func_client_refresh, func_server_refresh, ""},
@@ -335,32 +351,27 @@ Command cmds[] = {
     {"EXIT", EXIT, CLIENT, func111, func111, ""},
 };
 
-
-
 struct TEST_CMD {
-    char* str;
-    char* cmd;
+    char *str;
+    char *cmd;
 };
 
 char *test_cmd[] = {
     "LOGIN 192.168.42.134 11111",
-    "LOGIN 172.17.0.1 11111",
+    "LOGIN 172.25.39.125 11111",
     "LOGIN 127.0.0.1 11111",
     "SEND 192.168.42.134 HELLOWORLD_to134",
-    "SEND 172.17.0.1 HELLO_to_172.17.0.1_OWORLD",
+    "SEND 172.25.39.125 HELLO_to_172.25.39.125_OWORLD",
     "SEND 127.0.0.1 HELLO_to_127.0.0.1_OWORLD",
     "REFRESH",
-    "LIST"
-};
+    "LIST"};
 void run_command(unsigned char *str) {
     // str_to_upper(str);
-    if(strlen(str) <= 2){
+    if (strlen(str) <= 2) {
         int select = atoi(str);
-        if(select >=0 && select < sizeof(test_cmd)/sizeof(char*))
+        if (select >= 0 && select < sizeof(test_cmd) / sizeof(char *))
             str = test_cmd[select];
     }
-    
-
 
     for (int i = 0; i < sizeof(cmds) / sizeof(Command); i++) {
         if (strstr(str, cmds[i].cmd) == str) {
@@ -389,12 +400,12 @@ int test_shell_main(int argc, char const *argv[]) {
 int func_server_recv_msg_handler(int fd, char *str_in, size_t size) {
     MSG_TRANSFER *tMSG_TRANSFER = (MSG_TRANSFER *)str_in;
     if (tMSG_TRANSFER->cmd >= 0 && tMSG_TRANSFER->cmd < CMD_ID_MAX) {
-        logd("server run cmd: [%d],[%d]\n",fd,tMSG_TRANSFER->cmd);
+        logd("server run cmd: [%d],[%d]\n", fd, tMSG_TRANSFER->cmd);
         cmds[tMSG_TRANSFER->cmd].server_func(fd, tMSG_TRANSFER, size);
     }
 }
 
-int func_client_recv_msg_handler(int fd, MSG_TRANSFER* tmsg_transfer, size_t size) {
+int func_client_recv_msg_handler(int fd, MSG_TRANSFER *tmsg_transfer, size_t size) {
     dump_msg_transfer(tmsg_transfer);
     if (tmsg_transfer->cmd >= 0 && tmsg_transfer->cmd < CMD_ID_MAX) {
         cmds[tmsg_transfer->cmd].client_recv_func(fd, tmsg_transfer);
@@ -549,7 +560,7 @@ int server_main(int argc, char *argv[]) {
                             func_server_recv_msg_handler(i, buf, nbytes);
                         } else {
                             if (CUR_MODE == MODE_CLIENT) {
-                            logd("msg from:client %d, send>>>%s\n", i, buf);
+                                logd("msg from:client %d, send>>>%s\n", i, buf);
                                 func_client_recv_msg_handler(i, buf, nbytes);
                             }
                         }
@@ -621,7 +632,6 @@ int main(int argc, char const *argv[]) {
     // default:
     //     break;
     // }
-
 
     return 0;
 }

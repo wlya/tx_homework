@@ -23,7 +23,11 @@
 #else
 #define logd(...) /**/
 #endif
-
+char* LOGIN_STATUS[] = {
+    "UN_SEE",
+    "logged-in",
+    "logged-out"
+};
 enum CmdId
 {
     AUTHOR = 0,
@@ -105,7 +109,9 @@ int LISTEN_PORT = -2;
 
 
 
-
+typedef struct CliInfo{
+    char* block[IP_ADDR_MAX_LEN];
+} CliInfo;
 typedef struct VClient
 {
     uint32_t fd;
