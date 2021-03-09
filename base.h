@@ -80,7 +80,7 @@ typedef struct Command
     unsigned char *cmd;
     uint32_t cmd_id;
     enum CommandType type;
-    void (*client_func)(char *, char *);
+    void (*shell_func)(char *, char *);
     void (*server_func)(int, char *, size_t);
     unsigned char *v;
     void (*client_recv_func)(int, MSG_TRANSFER*);

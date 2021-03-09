@@ -162,7 +162,8 @@ void func_client_LOGIN(char *str_in, char *str_out) {
 
     printf("Message from server: ");
     vrecv(as_client_server_fd, str_out, sizeof(VClient) * MAX_CLIENTS_LIMIT, 0);
-    func_client_refresh_handle_back(str_out);
+    //func_client_refresh_handle_back(str_out);
+    // generate_list
     // close(as_client_server_fd);
 }
 void func_server_login(int fd, MSG_TRANSFER *str_in, size_t size) {
@@ -286,27 +287,33 @@ void func_client_refresh(char *strin, char *strout) {
         func_client_refresh_handle_back(&msg_back);
     }
 }
-void func_server_refresh(int fd, MSG_TRANSFER *tmsg_transfer, size_t size) {
-    logd("server: recv cmd >> refresh\n");
+void generate_list(int fd, char** buffer, size_t* buffer_size){
     size_t buf_size = sizeof(VClient) * server_clients_count + 8;
+    *buffer_size = buf_size;
     char *msg = malloc(buf_size);
+    *buffer = msg;
     memset(msg, 0, buf_size);
     *(uint32_t *)msg = server_clients_count;
     char *msg_0 = msg + 8;
     logd("server_clients_count : %d\n", server_clients_count);
-    hexDump("", msg, buf_size);
+    // hexDump("", msg, buf_size);
     for (int i = 1; i < MAX_CLIENTS_LIMIT; i++) {
-        if(server_clients[i].status !=UN_SEE){
-            logd("fd = %d, [%d].fd = %d, status = %d\n", fd, i, server_clients[i].fd, server_clients[i].status );
-            dump_client_info(&server_clients[i]);
-        }
+        // if(server_clients[i].status !=UN_SEE){
+        //     logd("fd = %d, [%d].fd = %d, status = %d\n", fd, i, server_clients[i].fd, server_clients[i].status );
+        //     dump_client_info(&server_clients[i]);
+        // }
         if (server_clients[i].fd != fd && server_clients[i].status != UN_SEE) {
             memcpy(msg_0, &server_clients[i], sizeof(VClient));
-            hexDump("", msg, buf_size);
+            // hexDump("", msg, buf_size);
             msg_0 += sizeof(VClient);
         }
     }
-    
+}
+void func_server_refresh(int fd, MSG_TRANSFER *tmsg_transfer, size_t size) {
+    logd("server: recv cmd >> refresh\n");
+    char *msg;
+    size_t buf_size;
+    generate_list(fd, &msg, &msg);
     vsend(fd, msg, buf_size , 0);
     free(msg);
 }
@@ -341,6 +348,10 @@ struct TEST_CMD {
     char* str;
     char* cmd;
 };
+
+
+
+
 
 char *test_cmd[] = {
     "LOGIN 192.168.42.134 11111",
