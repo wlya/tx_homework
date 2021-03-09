@@ -62,11 +62,11 @@ void func_client_LOGIN(char *str_in, char *str_out){
     servaddr.sin_addr.s_addr = inet_addr(as_client_server_addr); 
   
     if (connect(as_client_fd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0) { 
-        printf("\n Error : Connect Failed \n"); 
+        printf("\n Error : Connect Failed \n");
+        return INTERNAL_ERROR;
     } 
   
-    memset(str_out, 0, sizeof(str_out)); 
-    strcpy(str_out, "Hello Server"); 
+    
     write(as_client_fd, &myself_info, sizeof(myself_info));
     
     printf("Message from server: "); 

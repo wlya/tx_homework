@@ -35,6 +35,11 @@ typedef struct Command
     unsigned char *description;
 } Command;
 
+#define MAX_CMD_TRANSFER_SIZE 508
+typedef struct CmdTransfer{
+    uint32_t cmd;
+    uint8_t str[MAX_CMD_TRANSFER_SIZE];
+};
 
 #define P_STATE_NONE 0x001
 #define P_STATE_SERVER 0x002
