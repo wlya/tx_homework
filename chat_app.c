@@ -593,7 +593,6 @@ char *test_cmd[] = {
     "BLOCKED 192.168.42.134",                            //14
     "BLOCK 127.0.0.1",                                   //15
     "STATISTICS",                                        //16
-
 };
 void run_command(unsigned char *str) {
     // str_to_upper(str);
