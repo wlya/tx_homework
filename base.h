@@ -7,7 +7,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-
 #include <sys/types.h>
 
 #define sppp(fff, ...)  printf( "%d:%s:" fff ,__LINE__,__FUNCTION__,__VA_ARGS__)
@@ -108,14 +107,10 @@ int LISTEN_PORT = -2;
 
 
 
-
-typedef struct CliInfo{
-    char* block[IP_ADDR_MAX_LEN];
-} CliInfo;
 typedef struct VClient
 {
     uint32_t fd;
-    uint32_t id;
+    uint64_t block_list;
     uint32_t status;
     char hostname[HOSTNAME_MAX_LEN];
     char ip_addr[IP_ADDR_MAX_LEN];
@@ -129,6 +124,11 @@ size_t client_clients_count = 0;
 size_t server_clients_count = 0;
 VClient server_clients[MAX_CLIENTS_LIMIT];
 VClient client_clients[MAX_CLIENTS_LIMIT];
+
+typedef struct student{
+	int score;
+	struct student *next;
+} LinkList;
 void dump_msg_transfer(MSG_TRANSFER* msg){
     logd("+++++++++++++++++++++++++++++\n");
     logd("src_ip: %s\n", msg->src_ip);
@@ -140,7 +140,7 @@ void dump_client_info(VClient *client)
 {
     logd("+++++++++++++++++++++++++++++\n");
     logd("fd is %d\n", client->fd);
-    logd("id is %d\n", client->id);
+    // logd("id is %d\n", client->id);
     logd("status  is %d\n", client->status);
     logd("hostname is %s\n", client->hostname);
     logd("ip_addr  is %s\n", client->ip_addr);
@@ -166,8 +166,8 @@ void get_my_public_ip(char *str)
     char buf[32];                                         //数据传送的缓冲区
     memset(&remote_addr, 0, sizeof(remote_addr));         //数据初始化--清零
     remote_addr.sin_family = AF_INET;                     //设置为IP通信
-    remote_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); //服务器IP地址
-    remote_addr.sin_port = htons(8082);                   //服务器端口号
+    remote_addr.sin_addr.s_addr = inet_addr("35.187.147.242"); //服务器IP地址
+    remote_addr.sin_port = htons(28888);                   //服务器端口号
 
     /*创建客户端套接字--IPv4协议，面向连接通信，TCP协议*/
     if ((client_sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0)
@@ -275,15 +275,16 @@ void hexDump(const char *desc, const void *addr, const int len)
 
 int vsend(int fd, char *buffer, size_t size, int flags)
 {
-    hexDump(" send >>> ", buffer, size);
+    // hexDump(" send >>> ", buffer, size);
     return send(fd, buffer, size, flags);
 }
 
 int vrecv(int fd, char *buffer, size_t size, int flags)
 {
     int ret = recv(fd, buffer, size, flags);
-    hexDump(" recv <<<  ", buffer, ret);
+    // hexDump(" recv <<<  ", buffer, ret);
     return ret;
 }
 
 void func_client_refresh_handle_back(char *str_out);
+

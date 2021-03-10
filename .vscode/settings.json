@@ -4,6 +4,7 @@
         "unistd.h": "c",
         "sstream": "c",
         "stdlib.h": "c",
-        "in.h": "c"
+        "in.h": "c",
+        "functional": "c"
     }
 }
