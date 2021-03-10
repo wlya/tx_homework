@@ -49,6 +49,7 @@ enum CmdId
     CMD_ID_MAX
 };
 
+#define MODE_SERVER
 enum CommandType
 {
     NONE,
@@ -82,7 +83,7 @@ typedef struct Command
 {
     unsigned char *cmd;
     uint32_t cmd_id;
-    enum CommandType type;
+    uint32_t cmd_shell_state;
     void (*shell_func)(char *, char *);
     void (*server_func)(int, char *, size_t);
     unsigned char *v;
@@ -97,14 +98,24 @@ typedef struct Command
 //     unsigned char *description;
 // }ClientOnRecvCmd;
 
-#define MODE_NONE 0x001
-#define MODE_SERVER 0x002
-#define MODE_CLIENT 0x003
+#define MODE_NONE  0x001
+#define MODE_SERVER 0x010
+#define MODE_CLIENT 0x100
 
 #define ONLINE 0xAB
 int CUR_MODE = MODE_NONE;
 int LISTEN_PORT = -2;
 
+
+#define SHELL_STATE_ALL             0x1111111
+#define SHELL_STATE_SERVER          0x0000010
+#define SHELL_STATE_CLIENT          0x0000100
+#define SHELL_STATE_CLIENT_LOGINED  0x0001000
+#define SHELL_STATE_CLIENT_LOGOUTED ~SHELL_STATE_CLIENT_LOGINED //0x1110111
+
+
+
+uint32_t CUR_SHELL_STATE = 0x0;
 
 
 typedef struct VClient
@@ -130,6 +141,7 @@ typedef struct student{
 	struct student *next;
 } LinkList;
 void dump_msg_transfer(MSG_TRANSFER* msg){
+    return;
     logd("+++++++++++++++++++++++++++++\n");
     logd("src_ip: %s\n", msg->src_ip);
     logd("dst_ip: %s\n", msg->dst_ip);
@@ -138,6 +150,7 @@ void dump_msg_transfer(MSG_TRANSFER* msg){
 }
 void dump_client_info(VClient *client)
 {
+    return;
     logd("+++++++++++++++++++++++++++++\n");
     logd("fd is %d\n", client->fd);
     // logd("id is %d\n", client->id);

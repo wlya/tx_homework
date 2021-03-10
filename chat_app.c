@@ -38,7 +38,6 @@ int is_has_clients(char *ip) {
             tclient = &server_clients[i];
         }
 
-
         if (strncmp(tclient->ip_addr, ip, IP_ADDR_MAX_LEN) == 0) {
             logd("ip in cache ok: %s\n", ip);
             return 1;
@@ -157,6 +156,7 @@ void func_shell_LOGIN(char *str_in, char *str_out) {
     logd("vsend!!!\n");
     // recv(i, buf, sizeof(buf), 0))
     // write(as_client_server_fd, &myself_info, sizeof(myself_info));
+    CUR_SHELL_STATE |= SHELL_STATE_CLIENT_LOGINED;
 
     printf("Message from server: ");
     vrecv(as_client_server_fd, str_out, sizeof(VClient) * MAX_CLIENTS_LIMIT, 0);
@@ -244,9 +244,9 @@ void func_shell_list(char *str_in, char *str_out) {
     //list
     VClient *tarray = sort_clients();
     int total_count = 0;
-    if(CUR_MODE == MODE_SERVER){
+    if (CUR_MODE == MODE_SERVER) {
         total_count = server_clients_count;
-    }else{
+    } else {
         total_count = client_clients_count;
     }
     if (total_count == 0) {
@@ -412,6 +412,7 @@ void func_shell_logout(char *strin, char *strout) {
     size_t msg_back_len = MAX_MSG_LEN;
     func_base_shell_cmd_to_server(LOGOUT, strin, strnlen(strin, MAX_MSG_LEN), msg_back, &msg_back_len);
     close(as_client_server_fd);
+    CUR_SHELL_STATE &= SHELL_STATE_CLIENT_LOGOUTED;
     as_client_server_fd = INTERNAL_ERROR;
 }
 
@@ -534,9 +535,9 @@ void func_server_broadcast(int fd, MSG_TRANSFER *tmsg_transfer, size_t size) {
 void func_shell_blocked(char *strin, char *strout) {
     if (CUR_MODE == MODE_SERVER) {
         int id = get_id_by_ip(strin);
-        for(int i = 0; i < 64; i++){
-            if( server_clients[id].block_list & ((uint64_t)0x1)<<i){
-                logd("is blocked by %d, %s\n",i, server_clients[i].ip_addr);
+        for (int i = 0; i < 64; i++) {
+            if (server_clients[id].block_list & ((uint64_t)0x1) << i) {
+                logd("is blocked by %d, %s\n", i, server_clients[i].ip_addr);
             }
         }
     }
@@ -549,22 +550,24 @@ void func_shell_on_recv_send(int fd, MSG_TRANSFER *msg) {
 }
 
 Command cmds[] = {
-    {"AUTHOR", AUTHOR, COMMON, func_shell_AUTHOR, func_shell_AUTHOR, "ID func is test ID"},
-    {"IP", IP, COMMON, func_shell_IP, func_shell_IP, "LIST description is list users,...."},
-    {"PORT", PORT, COMMON, func_shell_PORT, func_shell_PORT, "HELP print all help messages description is whicnn,...."},
-    {"LIST", LIST, COMMON, func_shell_list, func_server_list, "HELP print all help messages description is whicnn,...."},
+    {"AUTHOR",  AUTHOR, SHELL_STATE_ALL ,   func_shell_AUTHOR, func_shell_AUTHOR, "ID func is test ID"},
+    {"IP",      IP,     SHELL_STATE_ALL,    func_shell_IP, func_shell_IP, "LIST description is list users,...."},
+    {"PORT",    PORT,   SHELL_STATE_ALL,    func_shell_PORT, func_shell_PORT, "HELP print all help messages description is whicnn,...."},
+    {"LIST",    LIST,   SHELL_STATE_CLIENT_LOGINED|SHELL_STATE_SERVER, 
+                                            func_shell_list, func_server_list, "HELP print all help messages description is whicnn,...."},
 
-    {"STATISTICS", STATISTICS, SERVER, func_shell_statistics, func111, ""},
-    {"BLOCKED", BLOCKED, SERVER, func_shell_blocked, func111, ""},
+    {"STATISTICS", STATISTICS, SHELL_STATE_SERVER, func_shell_statistics, func111, ""},
+    {"BLOCKED", BLOCKED, SHELL_STATE_SERVER, func_shell_blocked, func111, ""},
 
-    {"LOGIN", LOGIN, CLIENT, func_shell_LOGIN, func_server_login, "LOG IN 127.0.0.1 1234"},
-    {"REFRESH", REFRESH, CLIENT, func_shell_refresh, func_server_refresh, ""},
-    {"SEND", SEND, CLIENT, func_shell_send, func_server_send, "send msg", func_shell_on_recv_send},
-    {"BROADCAST", BROADCAST, CLIENT, func_shell_broadcast, func_server_broadcast, "", func_shell_on_recv_send},
-    {"BLOCK", BLOCK, CLIENT, func_shell_block, func_server_block, ""},
-    {"UNBLOCK", UNBLOCK, CLIENT, func_shell_unblock, func_server_block, ""},
-    {"LOGOUT", LOGOUT, CLIENT, func_shell_logout, func_server_logout, ""},
-    {"EXIT", EXIT, CLIENT, func_shell_exit, func_server_exit, ""},
+    //WHEN NOT LOGIN, ONLY LOGIN,EXIT,IP,PORT,and AUTHOR,
+    {"LOGIN", LOGIN,    SHELL_STATE_CLIENT, func_shell_LOGIN, func_server_login, "LOG IN 127.0.0.1 1234"},
+    {"REFRESH", REFRESH,SHELL_STATE_CLIENT_LOGINED, func_shell_refresh, func_server_refresh, ""},
+    {"SEND", SEND,      SHELL_STATE_CLIENT_LOGINED, func_shell_send, func_server_send, "send msg", func_shell_on_recv_send},
+    {"BROADCAST", BROADCAST,SHELL_STATE_CLIENT_LOGINED, func_shell_broadcast, func_server_broadcast, "", func_shell_on_recv_send},
+    {"BLOCK", BLOCK,        SHELL_STATE_CLIENT_LOGINED, func_shell_block, func_server_block, ""},
+    {"UNBLOCK", UNBLOCK,    SHELL_STATE_CLIENT_LOGINED, func_shell_unblock, func_server_block, ""},
+    {"LOGOUT", LOGOUT,      SHELL_STATE_CLIENT_LOGINED, func_shell_logout, func_server_logout, ""},
+    {"EXIT", EXIT,          SHELL_STATE_ALL, func_shell_exit, func_server_exit, ""},
 };
 
 struct TEST_CMD {
@@ -599,21 +602,42 @@ void run_command(unsigned char *str) {
     }
     if (strlen(str) <= 2 && strcmp(str, "IP") != 0) {
         int select = atoi(str);
-        if (select >= 0 && select < sizeof(test_cmd) / sizeof(char *))
+        logd("select[%d]\n", select);
+        if (select >= 0 && select < sizeof(test_cmd) / sizeof(char *)){
             str = test_cmd[select];
+        }
     }
+    logd("[%s]\n", str);
+    char cmd_str_copy[256];
+    memset(cmd_str_copy, 0, 256);
+    strncpy(cmd_str_copy, str, 255);
+    char* space_ptr = strchr(cmd_str_copy, ' ');
+    logd("[%s][%s]\n", str, space_ptr);
 
+    if( space_ptr != NULL ){
+        *space_ptr = '\0';
+        space_ptr++;
+    }else{
+        space_ptr = cmd_str_copy;
+    }
+    
+    logd("[%s]\n", str);
+    
     for (int i = 0; i < sizeof(cmds) / sizeof(Command); i++) {
-        if (strstr(str, cmds[i].cmd) == str) {
-            if (cmds[i].type == CUR_MODE || cmds[i].type == COMMON || DEBUG) {
+        // logd("%s, %s\n", cmd_str_copy, cmds[i].cmd);
+        if (strcmp(cmd_str_copy, cmds[i].cmd) == 0) {
+            // logd("cmds[%d].cmd_shell_state=[%08x],CUR_SHELL_STATE=[%08x]\n", i, cmds[i].cmd_shell_state, CUR_SHELL_STATE);
+            if (cmds[i].cmd_shell_state & CUR_SHELL_STATE) {
+                logd("Mode check OK.\n");
                 char *buff_out = malloc(sizeof(VClient) * MAX_CLIENTS_LIMIT);
                 logd("[running cmd: [%s](%s) ]\n", cmds[i].cmd, str + strlen(cmds[i].cmd) + 1);
-                cmds[i].shell_func(str + strlen(cmds[i].cmd) + 1, buff_out);
+                cmds[i].shell_func(space_ptr , buff_out);
                 free(buff_out);
-                break;
             } else {
-                loge("You are in xxx mode, but run yyy's command");
+                logd("Mode check NNNNNNNNNNNN. You are in xxx mode, but run yyy's command\n");
+
             }
+            return 0;
         }
     }
     return 0;
@@ -715,7 +739,6 @@ int server_main(int argc, char *argv[]) {
             char cmd_buffer[512];
             nbytes = read(0, cmd_buffer, sizeof(cmd_buffer));
             cmd_buffer[nbytes - 1] = '\0';
-            logd("running cmd >>>[%s]\n", cmd_buffer);
             run_command(cmd_buffer);
         }
         for (i = 1; i <= fdmax; i++) {
@@ -799,12 +822,14 @@ int main(int argc, char const *argv[]) {
         //client mode
         logd("in client mode");
         CUR_MODE = MODE_CLIENT;
+        CUR_SHELL_STATE |= SHELL_STATE_CLIENT;
         LISTEN_PORT = atoi(argv[2]);
     } else {
         if (strcmp(argv[1], "s") == 0) {
             //server mode
             logd("in server mode");
             CUR_MODE = MODE_SERVER;
+            CUR_SHELL_STATE |= SHELL_STATE_SERVER;
             LISTEN_PORT = atoi(argv[2]);
             // server_main()
         } else {
@@ -823,16 +848,6 @@ int main(int argc, char const *argv[]) {
     logd("port is %d\n", LISTEN_PORT);
     init_client_info();
     server_main(argc, argv);
-    // switch (CUR_MODE)
-    // {
-    // case P_STATE_SERVER:
-    //     server_main(argc, argv);
-    //     break;
-    // case P_STATE_CLIENT:
-    //     client_main(argc, argv);
-    // default:
-    //     break;
-    // }
 
     return 0;
 }
